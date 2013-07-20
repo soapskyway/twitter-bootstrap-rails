@@ -11,7 +11,7 @@ include NavbarHelper
 
 describe NavbarHelper, :type => :helper do
   before do
-    self.stub!("current_page?").and_return(false)
+    self.stub!("uri_state").and_return(:inactive)
     self.stub!("root_url").and_return("/")
   end
   describe "nav_bar" do
@@ -94,12 +94,24 @@ describe NavbarHelper, :type => :helper do
       menu_item("Home", "/").should eql('<li><a href="/">Home</a></li>')
     end
     it "should return the link with class 'active' if on current page" do
-      self.stub!("current_page?").and_return(true)
+      self.stub!("uri_state").and_return(:active)
       menu_item("Home", "/").should eql('<li class="active"><a href="/">Home</a></li>')
     end
     it "should pass any other options through to the link_to method" do
-      self.stub!("current_page?").and_return(true)
+      self.stub!("uri_state").and_return(:active)
       menu_item("Log out", "/users/sign_out", :class => "home_link", :method => :delete).should eql('<li class="active"><a href="/users/sign_out" class="home_link" data-method="delete" rel="nofollow">Log out</a></li>')
+    end
+    it "should pass a block but no name if a block is present" do
+      self.stub!("current_page?").and_return(false)
+      menu_item("/"){content_tag("i", "", :class => "icon-home") + " Home"}.should eql('<li><a href="/"><i class="icon-home"></i> Home</a></li>')
+    end
+    it "should work with just a block" do
+      self.stub!("current_page?").and_return(false)
+      menu_item{ content_tag("i", "", :class => "icon-home") + " Home" }.should eql('<li><a href="#"><i class="icon-home"></i> Home</a></li>')
+    end
+    it "should return the link with class 'active' if on current page with a block" do
+      self.stub!("uri_state").and_return(:active)
+      menu_item("/"){ content_tag("i", "", :class => "icon-home") + " Home" }.should eql('<li class="active"><a href="/"><i class="icon-home"></i> Home</a></li>')
     end
   end
 
@@ -108,6 +120,16 @@ describe NavbarHelper, :type => :helper do
       drop_down "Products" do
         menu_item "Latest", "/"
       end.gsub(/\s/, '').downcase.should eql(DROPDOWN_MENU.gsub(/\s/, '').downcase)
+    end
+  end
+
+  describe "drop_down_with_submenu" do
+    it "should do render the proper drop down code" do
+      drop_down_with_submenu "Products" do
+        drop_down_submenu "Latest" do
+          menu_item "Option1", "/"
+        end
+      end.gsub(/\s/, '').downcase.should eql(DROPDOWN_MENU_WITH_SUBMENU.gsub(/\s/, '').downcase)
     end
   end
 
@@ -306,6 +328,20 @@ DROPDOWN_MENU = <<-HTML
   </a>
   <ul class="dropdown-menu">
     <li><a href="/">Latest</a></li>
+  </ul>
+</li>
+HTML
+
+DROPDOWN_MENU_WITH_SUBMENU = <<-HTML
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Products <b class="caret"></b></a>
+  <ul class="dropdown-menu">
+    <li class="dropdown-submenu">
+      <a href="">Latest</a>
+      <ul class="dropdown-menu">
+        <li><a href="/">Option1</a></li>
+      </ul>
+    </li>
   </ul>
 </li>
 HTML

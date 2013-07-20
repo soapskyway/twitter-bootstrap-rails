@@ -15,16 +15,34 @@ module NavbarHelper
     content_tag(:ul, :class => "nav #{pull_class}", &block)
   end
 
-  def menu_item(name, path="#", *args)
+  def menu_item(name=nil, path="#", *args, &block)
+    path = name || path if block_given?
     options = args.extract_options!
     content_tag :li, :class => is_active?(path) do
-      link_to name, path, options
+      name, path = path, options if block_given?
+      link_to name, path, options, &block
     end
   end
 
   def drop_down(name)
     content_tag :li, :class => "dropdown" do
       drop_down_link(name) + drop_down_list { yield }
+    end
+  end
+
+  def drop_down_with_submenu(name, &block)
+    content_tag :li, :class => "dropdown" do
+      drop_down_link(name) + drop_down_sublist(&block)
+    end
+  end
+
+  def drop_down_sublist(&block)
+    content_tag :ul, :class => "dropdown-menu", &block
+  end
+
+  def drop_down_submenu(name, &block)
+    content_tag :li, :class => "dropdown-submenu" do
+      link_to(name, "") + drop_down_list(&block)
     end
   end
 
@@ -49,6 +67,33 @@ module NavbarHelper
       text || yield
     end
   end
+
+  # Returns current url or path state (useful for buttons).
+  # Example:
+  #   # Assume we'r currently at blog/categories/test
+  #   uri_state('/blog/categories/test')   # :active
+  #   uri_state('/blog/categories')        # :chosen
+  #   uri_state('/blog/categories/test/3') # :inactive    
+  def uri_state(uri)
+    root_url = request.host_with_port + '/'
+    root = uri == '/' || uri == root_url
+
+    request_uri = if uri.start_with?(root_url)
+      request.url
+    else
+      request.path
+    end
+
+    if uri == request_uri
+      :active
+    else
+      if request_uri.start_with?(uri) and not(root)
+        :chosen
+      else
+        :inactive
+      end
+    end
+  end  
 
   private
 
@@ -110,11 +155,11 @@ module NavbarHelper
   end
 
   def responsive_div(&block)
-    content_tag(:div, :class => "nav-collapse", &block)
+    content_tag(:div, :class => "nav-collapse collapse", &block)
   end
 
   def is_active?(path)
-    "active" if current_page?(path)
+    "active" if uri_state(path).in?([:active, :chosen])
   end
 
   def name_and_caret(name)
